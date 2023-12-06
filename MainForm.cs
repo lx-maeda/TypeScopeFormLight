@@ -15,7 +15,7 @@ public partial class MainForm : Form
     private readonly List<MetaData> _metaDatas = [];
 
     // クラスを格納するリスト
-    private readonly List<ClassDeclarationSyntax> _classes = [];
+    private List<ClassDeclarationSyntax> _classes = [];
 
     public MainForm()
     {
@@ -111,22 +111,8 @@ public partial class MainForm : Form
         }
 
         DataGridView1.Rows.Clear();
-        _classes.Clear();
         TextBoxフォルダ選択Read.Text = fd.SelectedPath;
-
-        // フォルダ内の全てのcsファイルを取得
-        var csFiles = Directory.GetFiles(fd.SelectedPath, "*.cs", SearchOption.AllDirectories);
-
-        foreach (var filePath in csFiles)
-        {
-            // ファイルの内容を読み込む
-            var code = File.ReadAllText(filePath);
-            // パースして構造木を取得
-            var tree = CSharpSyntaxTree.ParseText(code);
-            var root = tree.GetCompilationUnitRoot();
-            // 全てのcsファイルのクラスを取得
-            _classes.AddRange(root.DescendantNodes().OfType<ClassDeclarationSyntax>());
-        }
+        _classes = FileUtil.ExtractClassDeclarationsFromCsFiles(fd.SelectedPath);
 
         // クラス名を取得してDataGridView1に追加
         foreach (var classDeclaration in _classes)
@@ -171,7 +157,7 @@ public partial class MainForm : Form
         }
 
         var path = $"{TextBoxフォルダ選択Save.Text}\\{_metaDatas[0].クラス名}.md";
-        ExportUtil.ToMarkDown(path, _metaDatas);
+        FileUtil.ExportToFile(path, _metaDatas);
         toolStripLabel1.Text = $"{path} - 出力完了";
     }
 
