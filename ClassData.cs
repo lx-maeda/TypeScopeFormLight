@@ -1,6 +1,6 @@
 ﻿namespace TypeScopeFormLight;
 
-public class MetaData
+public class ClassData
 {
     public string クラス名 { get; set; } = string.Empty;
 

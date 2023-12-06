@@ -47,7 +47,7 @@ public static class FileUtil
     /// </summary>
     /// <param name="path"></param>
     /// <param name="records"></param>
-    public static void ExportToFile(string path, IEnumerable<MetaData> records)
+    public static void ExportToFile(string path, IEnumerable<ClassData> records)
     {
         using var writer = new StreamWriter(path, false, Encoding.UTF8);
         writer.Write(records.GetMarkDownString());
@@ -58,7 +58,7 @@ public static class FileUtil
     /// </summary>
     /// <param name="records"></param>
     /// <returns></returns>
-    private static string GetMarkDownString(this IEnumerable<MetaData> records)
+    private static string GetMarkDownString(this IEnumerable<ClassData> records)
     {
         if (records is null || !records.Any())
         {
@@ -70,7 +70,7 @@ public static class FileUtil
         stringBuilder.AppendLine("erDiagram");
         stringBuilder.AppendLine(@$"  ""{records.First().クラス名}"" {{");
 
-        foreach (MetaData record in records)
+        foreach (ClassData record in records)
         {
             // mermaidの仕様上、<>は使用できないため、~に置換する
             if (record.型名.Contains('<') || record.型名.Contains('>'))

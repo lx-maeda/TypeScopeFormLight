@@ -12,7 +12,7 @@ public partial class MainForm : Form
     private const string DEFAULT_SAVE_DIR_PATH = @"C:\Tmp";
 
     // クラス名とメンバーの情報を格納するクラス
-    private readonly List<MetaData> _metaDatas = [];
+    private readonly List<ClassData> _classDatas = [];
 
     // クラスを格納するリスト
     private List<ClassDeclarationSyntax> _classes = [];
@@ -121,7 +121,7 @@ public partial class MainForm : Form
             DataGridView1.Rows.Add(className);
         }
 
-        ShowMetaDatas();
+        ShowClassDatas();
 
         label1.Text = $"{_classes.Count} 件";
         toolStripLabel1.Text = "読込完了";
@@ -142,9 +142,9 @@ public partial class MainForm : Form
 
     private void ButtonMD出力_Click(object sender, EventArgs e)
     {
-        FilterMetaData();
+        FilterClassInfo();
 
-        if (_metaDatas.Count == 0)
+        if (_classDatas.Count == 0)
         {
             toolStripLabel1.Text = "出力対象がありません。";
             return;
@@ -156,24 +156,24 @@ public partial class MainForm : Form
             return;
         }
 
-        var path = $"{TextBoxフォルダ選択Save.Text}\\{_metaDatas[0].クラス名}.md";
-        FileUtil.ExportToFile(path, _metaDatas);
+        var path = $"{TextBoxフォルダ選択Save.Text}\\{_classDatas[0].クラス名}.md";
+        FileUtil.ExportToFile(path, _classDatas);
         toolStripLabel1.Text = $"{path} - 出力完了";
     }
 
 
     private void CheckBoxPublicのみ_CheckedChanged(object sender, EventArgs e)
     {
-        ShowMetaDatas();
+        ShowClassDatas();
     }
 
     private void DataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
     {
         // DataGridView1のクラス名をクリックしたら、DataGridView2にメンバーを表示する
-        ShowMetaDatas();
+        ShowClassDatas();
     }
 
-    private void ShowMetaDatas()
+    private void ShowClassDatas()
     {
         DataGridView2.Rows.Clear();
 
@@ -182,16 +182,16 @@ public partial class MainForm : Form
 
         var classDeclaration = _classes[currentIndex];
 
-        SetMetaDatas(classDeclaration);
+        SetClassDatas(classDeclaration);
 
-        foreach (var data in _metaDatas)
+        foreach (var data in _classDatas)
         {
             DataGridView2.Rows.Add(data.種別, data.修飾子, data.型名, data.名称, data.コメント);
         }
         UpdateDataGridView2();
     }
 
-    private void SetMetaDatas(ClassDeclarationSyntax classDeclaration)
+    private void SetClassDatas(ClassDeclarationSyntax classDeclaration)
     {
         if (classDeclaration is null) return;
 
@@ -201,10 +201,10 @@ public partial class MainForm : Form
             member is PropertyDeclarationSyntax ? 2 :
             member is FieldDeclarationSyntax ? 3 : 4);
 
-        _metaDatas.Clear();
-        AddRangeMetaDatas(sortedMembers);
+        _classDatas.Clear();
+        AddRangeClassDatas(sortedMembers);
 
-        void AddRangeMetaDatas(IEnumerable<MemberDeclarationSyntax>? members)
+        void AddRangeClassDatas(IEnumerable<MemberDeclarationSyntax>? members)
         {
             if (members is null || !members.Any()) return;
 
@@ -233,8 +233,8 @@ public partial class MainForm : Form
                 // コメント
                 var comment = GetComment(member);
 
-                // MetaDataを作成
-                var metaData = new MetaData()
+                // ClassDataを作成
+                var classData = new ClassData()
                 {
                     クラス名 = classDeclaration.Identifier.Text,
                     種別 = member switch
@@ -249,7 +249,7 @@ public partial class MainForm : Form
                     名称 = name,
                     コメント = comment,
                 };
-                _metaDatas.Add(metaData);
+                _classDatas.Add(classData);
             }
         }
     }
@@ -346,20 +346,20 @@ public partial class MainForm : Form
     }
 
     /// <summary>
-    /// metaDatasを以下の条件でフィルタリングする
+    /// classDatasを以下の条件でフィルタリングする
     /// ・選択がチェックされてない行を除去する
     /// </summary>
-    private void FilterMetaData()
+    private void FilterClassInfo()
     {
         foreach (DataGridViewRow row in DataGridView2.Rows)
         {
-            // 選択されていない行はmetaDatasから削除
+            // 選択されていない行はclassDatasから削除
             if ((bool)row.Cells[row.Cells.Count - 1].Value == false)
             {
-                var meta = _metaDatas.FirstOrDefault(x => x.名称 == row.Cells[3].Value.ToString());
-                if (meta is not null)
+                var classData = _classDatas.FirstOrDefault(x => x.名称 == row.Cells[3].Value.ToString());
+                if (classData is not null)
                 {
-                    _metaDatas.Remove(meta);
+                    _classDatas.Remove(classData);
                 }
                 continue;
             };
