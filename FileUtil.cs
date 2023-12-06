@@ -11,7 +11,7 @@ public static class FileUtil
     /// </summary>
     /// <param name="dirPath">クラス宣言を検索するディレクトリのパス</param>
     /// <returns>指定されたディレクトリ内のすべてのC#ファイルから見つかったクラス宣言のリスト</returns>
-    public static List<ClassDeclarationSyntax> ExtractClassDeclarationsFromCsFiles(string dirPath)
+    public static List<ClassDeclarationSyntax> GetClassDeclarationsFromCsFiles(string dirPath)
     {
         // ディレクトリ内の全てのcsファイルのパスを取得
         var csFilePaths = Directory.EnumerateFiles(dirPath, "*.cs", SearchOption.AllDirectories);

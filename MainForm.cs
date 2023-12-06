@@ -1,4 +1,3 @@
-using System.Windows.Forms;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -112,7 +111,7 @@ public partial class MainForm : Form
 
         DataGridView1.Rows.Clear();
         TextBoxフォルダ選択Read.Text = fd.SelectedPath;
-        _classes = FileUtil.ExtractClassDeclarationsFromCsFiles(fd.SelectedPath);
+        _classes = FileUtil.GetClassDeclarationsFromCsFiles(fd.SelectedPath);
 
         // クラス名を取得してDataGridView1に追加
         foreach (var classDeclaration in _classes)
@@ -169,89 +168,24 @@ public partial class MainForm : Form
 
     private void DataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
     {
-        // DataGridView1のクラス名をクリックしたら、DataGridView2にメンバーを表示する
         ShowClassDatas();
     }
 
+    /// <summary>
+    /// DataGridView2にクラスのメンバー情報を表示する
+    /// </summary>
     private void ShowClassDatas()
     {
-        DataGridView2.Rows.Clear();
-
         int currentIndex = DataGridView1.CurrentCell?.RowIndex ?? -1;
         if (currentIndex < 0 || _classes.Count <= currentIndex) return;
 
         var classDeclaration = _classes[currentIndex];
-
-        SetClassDatas(classDeclaration);
-
-        foreach (var data in _classDatas)
+        DataGridView2.Rows.Clear();
+        foreach (var data in classDeclaration.GetClassDataFromMembers(CheckBoxPublicのみ.Checked))
         {
             DataGridView2.Rows.Add(data.種別, data.修飾子, data.型名, data.名称, data.コメント);
         }
         UpdateDataGridView2();
-    }
-
-    private void SetClassDatas(ClassDeclarationSyntax classDeclaration)
-    {
-        if (classDeclaration is null) return;
-
-        // classDeclaration.Membersをソートする Indexer > Property > Field > その他
-        var sortedMembers = classDeclaration.Members.OrderBy(member =>
-            member is IndexerDeclarationSyntax ? 1 :
-            member is PropertyDeclarationSyntax ? 2 :
-            member is FieldDeclarationSyntax ? 3 : 4);
-
-        _classDatas.Clear();
-        AddRangeClassDatas(sortedMembers);
-
-        void AddRangeClassDatas(IEnumerable<MemberDeclarationSyntax>? members)
-        {
-            if (members is null || !members.Any()) return;
-
-            foreach (var member in members.Where(IsValidMember))
-            {
-                if (member is null) break;
-
-                // アクセス修飾子
-                var modifier = member.Modifiers.First().ValueText;
-                // 型名
-                var type = member switch
-                {
-                    IndexerDeclarationSyntax indexer => indexer.Type.ToString(),
-                    PropertyDeclarationSyntax property => property.Type.ToString(),
-                    FieldDeclarationSyntax field => field.Declaration.Type.ToString(),
-                    _ => string.Empty,
-                };
-                // 変数名
-                var name = member switch
-                {
-                    IndexerDeclarationSyntax indexer => "this",
-                    PropertyDeclarationSyntax property => property.Identifier.Text,
-                    FieldDeclarationSyntax field => field.Declaration.Variables.First().Identifier.Text,
-                    _ => string.Empty,
-                };
-                // コメント
-                var comment = GetComment(member);
-
-                // ClassDataを作成
-                var classData = new ClassData()
-                {
-                    クラス名 = classDeclaration.Identifier.Text,
-                    種別 = member switch
-                    {
-                        IndexerDeclarationSyntax => Member.Indexer.ToString(),
-                        PropertyDeclarationSyntax => Member.Property.ToString(),
-                        FieldDeclarationSyntax => Member.Field.ToString(),
-                        _ => throw new NotImplementedException(),
-                    },
-                    修飾子 = modifier,
-                    型名 = type,
-                    名称 = name,
-                    コメント = comment,
-                };
-                _classDatas.Add(classData);
-            }
-        }
     }
 
     /// <summary>
@@ -264,7 +198,7 @@ public partial class MainForm : Form
 
         foreach (DataGridViewRow row in DataGridView2.Rows)
         {
-            // dataGridView2のrowの1行目に入っている種別を取得
+            // dataGridView2の種別に応じてセル背景色を変更
             var firstColStr = (string)row.Cells[0].Value;
             row.DefaultCellStyle.BackColor = firstColStr switch
             {
@@ -274,7 +208,7 @@ public partial class MainForm : Form
                 _ => Color.White,
             };
 
-            // 2行目がprivateなら文字を赤に変更
+            // アクセス修飾子がprivateなら文字を赤に変更
             if (row.Cells[1].Value.ToString() == "private")
             {
                 row.DefaultCellStyle.ForeColor = Color.Red;
@@ -283,66 +217,6 @@ public partial class MainForm : Form
             // checkboxの初期値をtrueにする
             row.Cells[row.Cells.Count - 1].Value = true;
         }
-    }
-
-    /// <summary>
-    /// memberが特定の基準に基づいて有効かどうかを判定する
-    /// ・memberがインデクサー、プロパティ、またはフィールドであること
-    /// ・publicのみチェックボックスにチェックがある場合、publicであること
-    /// </summary>
-    /// <param name="member"></param>
-    /// <returns></returns>
-    private bool IsValidMember(MemberDeclarationSyntax member)
-    {
-        if (member is IndexerDeclarationSyntax or PropertyDeclarationSyntax or FieldDeclarationSyntax)
-        {
-            // publicのみチェックボックスにチェックがある場合、public以外は表示しない
-            return !CheckBoxPublicのみ.Checked || member.Modifiers.Any(x => x.IsKind(SyntaxKind.PublicKeyword));
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// memberのコメントを取得する
-    /// </summary>
-    /// <param name="member"></param>
-    /// <returns></returns>
-    private static string GetComment(MemberDeclarationSyntax member)
-    {
-        var leadingTrivia = member.GetLeadingTrivia();
-
-        // 単一行コメントを取得する
-        var commentList = leadingTrivia.Where(x => x.IsKind(SyntaxKind.SingleLineCommentTrivia)).ToList();
-        var comment1 = commentList.Count == 0 ? string.Empty : string.Join(", ", commentList);
-
-        // XMLドキュメントコメントを取得する
-        var triviaList = leadingTrivia
-                        .Where(x => x.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia))
-                        .Select(trvia => trvia.GetStructure() as DocumentationCommentTriviaSyntax)
-                        .FirstOrDefault();
-        var comment2 = triviaList?.DescendantTokens()
-             .Where(token => token.IsKind(SyntaxKind.XmlTextLiteralToken))
-             .FirstOrDefault(token => !string.IsNullOrWhiteSpace(token.ValueText))
-             .ValueText ?? string.Empty;
-
-        // 末尾コメントを取得する
-        var trailingTrivia = member.GetTrailingTrivia();
-        var comment3 = trailingTrivia
-            .FirstOrDefault(trivia => trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
-                                  trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)).ToString();
-
-        //  単一行コメント > XMLドキュメントコメント > 末尾コメント の順に優先してコメントを取得する
-        string comment = !string.IsNullOrEmpty(comment1) ? comment1
-                       : !string.IsNullOrEmpty(comment2) ? comment2
-                       : comment3;
-
-        // コメントの不要箇所を削除する
-        comment = comment.Replace("///", string.Empty).Replace("//", string.Empty)
-                         .Replace("/*", string.Empty)
-                         .Replace("*/", string.Empty)
-                         .Trim();
-
-        return comment;
     }
 
     /// <summary>
@@ -364,13 +238,5 @@ public partial class MainForm : Form
                 continue;
             };
         }
-    }
-
-    private enum Member
-    {
-        Indexer,
-        Property,
-        Field,
-        Method,
     }
 }
