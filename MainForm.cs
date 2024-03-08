@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace TypeScopeFormLight;
@@ -156,7 +155,7 @@ public partial class MainForm : Form
         }
 
         var path = $"{TextBoxフォルダ選択Save.Text}\\{_classDatas[0].クラス名}.md";
-        FileUtil.ExportToFile(path, _classDatas);
+        FileUtil.ExportToMarkdown(path, _classDatas.);
         toolStripLabel1.Text = $"{path} - 出力完了";
     }
 
