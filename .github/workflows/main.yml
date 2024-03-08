@@ -3,6 +3,8 @@ name: PR Reviewer Auto Assignment
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    branches: 
+      - master
 
 jobs:
   reviewer-assign:
@@ -19,7 +21,7 @@ jobs:
       TARGET_BRANCH_PREFIX: "master"
 
     # TARGET_BRANCH_PREFIXで指定したprefixで始まるブランチを対象にレビュアーの自動割り当てが行われる。
-    if: github.event.pull_request.base.ref == ${{ env.TARGET_BRANCH }} && github.event.pull_request.draft == false
+    if: github.event.pull_request.base.ref == 'master' && github.event.pull_request.draft == false
     steps:
       - name: Get Members List
         id: get-members-list
