@@ -1,0 +1,51 @@
+name: PR Reviewer Auto Assignment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  reviewer-assign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    env:
+      API_BASE_URL: "https://api.github.com"
+      COMMON_HEADER: "Accept: application/vnd.github.v3+json"
+      MEMBER_EMAILS: |
+        kazuki.sasahara@luxiar.com
+        shigeto.maeda@luxiar.com
+        azumi.kawana@luxiar.com
+        hideo.nagano@luxiar.com
+      TARGET_BRANCH_PREFIX: "master"
+
+    # TARGET_BRANCH_PREFIXで指定したprefixで始まるブランチを対象にレビュアーの自動割り当てが行われる。
+    if: github.event.pull_request.base.ref == env.TARGET_BRANCH && github.event.pull_request.draft == false
+    steps:
+      - name: Get Members List
+        id: get-members-list
+        run: |
+          members=()
+          for email in $(echo "$MEMBER_EMAILS" | tr ',' ' '); do
+            response=$(curl -s -X GET \
+                 -H "$COMMON_HEADER" \
+                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                 $API_BASE_URL/search/users?q=$email+in:email)
+            user_id=$(echo $response | jq -r '.items[0].login')
+            if [ -n "$user_id" ] && [ "$user_id" != "${{ github.actor }}" ]; then
+              members+=("\"$user_id\"")
+            fi
+          done
+          echo ::set-output name=members::[$(IFS=,; echo "${members[*]}")]
+
+      - name: Set Reviewers
+        id: set-reviewers
+        run: |
+          if [ -z "${{ steps.get-members-list.outputs.members }}" ]; then
+            echo "メンバーが存在しない為、レビュアーの割り当てをスキップします。"
+          else
+            curl -X POST \
+                 -H "$COMMON_HEADER" \
+                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                 $API_BASE_URL/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+                 -d '{ "reviewers": ${{ steps.get-members-list.outputs.members }} }'
+          fi
