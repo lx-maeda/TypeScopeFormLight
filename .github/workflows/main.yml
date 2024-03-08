@@ -37,12 +37,12 @@ jobs:
               members+=("\"$user_id\"")
             fi
           done
-          echo ::set-output name=members::[$(IFS=,; echo "${members[*]}")]
+          echo "members=[$(IFS=,; echo "${members[*]}")]" >> $GITHUB_ENV
 
       - name: Set Reviewers
         id: set-reviewers
         run: |
-          if [ -z "${{ steps.get-members-list.outputs.members }}" ]; then
+          if [ -z "${{ env.members }}" ]; then
             echo "メンバーが存在しない為、レビュアーの割り当てをスキップします。"
           else
             curl -X POST \
